@@ -1,3 +1,4 @@
+
 package com.elixir.overlay
 
 import android.app.Activity
@@ -17,14 +18,17 @@ import android.widget.ScrollView
 import android.widget.TextView
 
 class MainActivity : Activity() {
+
     private lateinit var statusText: TextView
     private lateinit var startButton: Button
     private lateinit var stopButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         window.statusBarColor = Color.rgb(10, 10, 14)
         window.navigationBarColor = Color.rgb(10, 10, 14)
+
         buildUi()
     }
 
@@ -38,12 +42,21 @@ class MainActivity : Activity() {
             setBackgroundColor(Color.rgb(10, 10, 14))
             isFillViewport = true
         }
+
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(22), dp(34), dp(22), dp(28))
         }
-        scroll.addView(page, ScrollView.LayoutParams(-1, -1))
+
+        // Исправлено: используем ViewGroup.LayoutParams
+        scroll.addView(
+            page,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
 
         val spacer = View(this)
         page.addView(spacer, LinearLayout.LayoutParams(1, 0, 1f))
@@ -54,7 +67,10 @@ class MainActivity : Activity() {
             letterSpacing = 0.08f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            typeface = Typeface.create(
+                "sans-serif-medium",
+                Typeface.NORMAL
+            )
         }
         page.addView(logo, matchWrap())
 
@@ -76,6 +92,7 @@ class MainActivity : Activity() {
         page.addView(statusText, matchWrap())
 
         startButton = makeButton("ЗАПУСТИТЬ ОВЕРЛЕЙ")
+
         startButton.setOnClickListener {
             if (!Settings.canDrawOverlays(this)) {
                 val intent = Intent(
@@ -87,14 +104,22 @@ class MainActivity : Activity() {
                 startOverlay()
             }
         }
+
         page.addView(startButton, matchWidth())
 
         stopButton = makeButton("ОСТАНОВИТЬ ОВЕРЛЕЙ")
+
         stopButton.setOnClickListener {
             stopService(Intent(this, OverlayService::class.java))
             refreshStatus()
         }
-        page.addView(stopButton, matchWidth().apply { topMargin = dp(10) })
+
+        page.addView(
+            stopButton,
+            matchWidth().apply {
+                topMargin = dp(10)
+            }
+        )
 
         val note = TextView(this).apply {
             text = "Важно: распознавание карт по экрану пока не подключено. Сейчас доступна плавающая панель с демонстрационными данными."
@@ -107,40 +132,69 @@ class MainActivity : Activity() {
 
         val bottom = View(this)
         page.addView(bottom, LinearLayout.LayoutParams(1, 0, 1f))
+
         setContentView(scroll)
         refreshStatus()
     }
 
     private fun startOverlay() {
         val intent = Intent(this, OverlayService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startService(intent) else startService(intent)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+
         statusText.text = "Статус: запуск..."
     }
 
     private fun refreshStatus() {
         val hasPermission = Settings.canDrawOverlays(this)
         val running = OverlayService.isRunning
+
         statusText.text = when {
             running -> "Статус: оверлей запущен"
             !hasPermission -> "Статус: нужно разрешение на оверлей"
             else -> "Статус: оверлей не запущен"
         }
+
         if (::startButton.isInitialized) {
-            startButton.text = if (hasPermission) "ЗАПУСТИТЬ ОВЕРЛЕЙ" else "РАЗРЕШИТЬ ОТОБРАЖЕНИЕ ПОВЕРХ ОКОН"
+            startButton.text = if (hasPermission) {
+                "ЗАПУСТИТЬ ОВЕРЛЕЙ"
+            } else {
+                "РАЗРЕШИТЬ ОТОБРАЖЕНИЕ ПОВЕРХ ОКОН"
+            }
         }
     }
 
-    private fun makeButton(label: String) = Button(this).apply {
-        text = label
-        textSize = 13f
-        isAllCaps = false
-        setTextColor(Color.WHITE)
-        setBackgroundColor(Color.rgb(43, 43, 54))
-        minHeight = dp(52)
-        setPadding(dp(12), dp(8), dp(12), dp(8))
+    private fun makeButton(label: String): Button {
+        return Button(this).apply {
+            text = label
+            textSize = 13f
+            isAllCaps = false
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.rgb(43, 43, 54))
+            minHeight = dp(52)
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+        }
     }
 
-    private fun matchWrap() = LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT)
-    private fun matchWidth() = LinearLayout.LayoutParams(-1, dp(54))
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+    private fun matchWrap(): LinearLayout.LayoutParams {
+        return LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+    }
+
+    private fun matchWidth(): LinearLayout.LayoutParams {
+        return LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            dp(54)
+        )
+    }
+
+    private fun dp(value: Int): Int {
+        return (value * resources.displayMetrics.density).toInt()
+    }
 }
